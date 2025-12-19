@@ -38,6 +38,17 @@ incus exec id-01 -- sudo nixos-rebuild switch
 
 # Check service status
 incus exec id-01 -- systemctl status idempiere
+
+# Expose iDempiere web interface (container:8080 → host:8081)
+incus config device add id-01 myproxy proxy listen=tcp:0.0.0.0:8081 connect=tcp:127.0.0.1:8080
+
+# Option A: Open firewall (if using UFW)
+sudo ufw allow 8081/tcp
+# Access at http://<server-ip>:8081/webui/
+
+# Option B: SSH tunnel (no firewall changes needed)
+ssh -L 8081:localhost:8081 user@<server-ip>
+# Access at http://localhost:8081/webui/
 ```
 
 ## Architecture
