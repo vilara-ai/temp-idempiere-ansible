@@ -32,9 +32,9 @@ let
     port = 5432;
   };
 
-  # Wrapper script to connect to iDempiere database
+  # Wrapper script to connect to iDempiere database (uses ~/.pgpass for auth)
   psqli = pkgs.writeShellScriptBin "psqli" ''
-    PGPASSWORD="${db.password}" exec ${pkgs.postgresql_17}/bin/psql \
+    exec ${pkgs.postgresql_17}/bin/psql \
       -h ${db.host} \
       -p ${toString db.port} \
       -U ${db.user} \
@@ -50,6 +50,14 @@ in {
   system.activationScripts.binbash = ''
     mkdir -p /bin
     ln -sf ${pkgs.bash}/bin/bash /bin/bash
+  '';
+
+  # Create .pgpass for idempiere user (required for psqli and other pg tools)
+  system.activationScripts.pgpass = ''
+    PGPASS_FILE="/home/${idempiere.user}/.pgpass"
+    echo "${db.host}:${toString db.port}:${db.name}:${db.user}:${db.password}" > "$PGPASS_FILE"
+    chown ${idempiere.user}:${idempiere.group} "$PGPASS_FILE"
+    chmod 600 "$PGPASS_FILE"
   '';
 
   #############################################################################

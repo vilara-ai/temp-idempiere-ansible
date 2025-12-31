@@ -41,6 +41,22 @@
         msg: "{{ java_version.stderr_lines }}"
 
     #########################################################################
+    # Read database credentials from .pgpass (created by NixOS)
+    # Format: hostname:port:database:username:password
+    #########################################################################
+    - name: Read database credentials from .pgpass
+      ansible.builtin.set_fact:
+        _pgpass_parts: "{{ lookup('file', '/home/' + idempiere_user + '/.pgpass').split(':') }}"
+
+    - name: Set database variables from .pgpass
+      ansible.builtin.set_fact:
+        db_host: "{{ _pgpass_parts[0] }}"
+        db_port: "{{ _pgpass_parts[1] | int }}"
+        db_name: "{{ _pgpass_parts[2] }}"
+        db_user: "{{ _pgpass_parts[3] }}"
+        db_password: "{{ _pgpass_parts[4] }}"
+
+    #########################################################################
     # Set PostgreSQL password
     #########################################################################
     - name: Set postgres user password
@@ -268,19 +284,17 @@
     #########################################################################
     - name: Verify database connection
       become_user: "{{ idempiere_user }}"
-      ansible.builtin.shell: |
-        PGPASSWORD={{ db_password }} psql -d idempiere -U adempiere -h localhost -p 5432 -c ''
+      ansible.builtin.command:
+        cmd: psql -d {{ db_name }} -U {{ db_user }} -h {{ db_host }} -p {{ db_port }} -c ''
       when: import_database | default(false) | bool
-      no_log: true
       register: db_connection
       failed_when: db_connection.rc != 0
 
     - name: Verify database imported correctly
       become_user: "{{ idempiere_user }}"
       ansible.builtin.shell: |
-        PGPASSWORD={{ db_password }} psql -d idempiere -U adempiere -h localhost -p 5432 -c 'select count(*) from ad_system' | grep '1$'
+        psql -d {{ db_name }} -U {{ db_user }} -h {{ db_host }} -p {{ db_port }} -c 'select count(*) from ad_system' | grep '1$'
       when: import_database | default(false) | bool
-      no_log: true
       register: db_verify
       failed_when: db_verify.rc != 0
 
