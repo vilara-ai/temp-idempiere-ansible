@@ -18,9 +18,14 @@ incus launch images:nixos/25.11 id-xx \
   -c limits.cpu=2 \
   -d root,size=20GiB
 
-# Push repo and run installer
+# Push repo and run installer (IMPORTANT: must run from within the repo directory)
 incus file push -r . id-xx/opt/idempiere-install/
 incus exec id-xx -- /opt/idempiere-install/install.sh
+
+# If pushing from outside the repo (e.g., from parent directory), the structure will be wrong:
+#   WRONG:  incus file push -r ./idempiere-third-party-deploy/. id-xx/opt/idempiere-install/
+#   This creates: /opt/idempiere-install/idempiere-third-party-deploy/install.sh (nested!)
+#   CORRECT: cd idempiere-third-party-deploy && incus file push -r . id-xx/opt/idempiere-install/
 
 # Note: the install can take up to 10 minutes.
 
