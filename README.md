@@ -180,6 +180,31 @@ The playbook uses a sed-style configuration approach (learned from studying the 
 
 After installation, the REST API is available at `http://<server>:8080/api/v1/`. See the [full documentation](https://bxservice.github.io/idempiere-rest-docs/) for details.
 
+### Checking REST API Readiness
+
+**Important:** The REST API is not immediately available when the iDempiere service starts. There is a startup delay (typically 15-60 seconds) while OSGi bundles initialize and 2Pack migrations run.
+
+**The problem:** Using `curl` to check readiness causes connection timeouts during startup, making it unreliable as a health check.
+
+**Recommended approach:** Check the systemd journal for the final REST API 2Pack migration completion:
+
+```bash
+# Wait for REST API to be ready (check journal for final migration)
+until journalctl -u idempiere --no-pager | grep -q "2Pack_1.0.18.zip installed"; do
+  echo "Waiting for REST API initialization..."
+  sleep 5
+done
+echo "REST API ready"
+```
+
+**Note:** This approach is not perfect - the version number (1.0.18) may change with REST API plugin updates, and there may be additional initialization after this log message. However, it is more reliable than curl-based checks which simply timeout during startup.
+
+**Startup sequence for reference:**
+1. `systemd` reports service "Started" (not yet ready)
+2. `com.trekglobal.idempiere.rest.api ... ready.` - OSGi bundle loaded (not yet ready)
+3. `LoggedSessionListener.contextInitialized` - Web context initialized
+4. `2Pack_1.0.18.zip installed` - Final REST API migration (API should be ready)
+
 ### Authenticate and Get Token
 
 ```bash
